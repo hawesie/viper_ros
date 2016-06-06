@@ -45,6 +45,9 @@ class ObjectSearchSM(smach.StateMachine):
         elif mode == 'human':
             reload (percept)
             self._perception = percept.PerceptionPeople()
+        elif mode == 'sem_cam':
+            reload (percept)
+            self._perception = percept.PerceptionSemanticCamera()
         else:
             reload (percept)
             self._perception = percept.PerceptionNill()

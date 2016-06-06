@@ -227,6 +227,69 @@ class PerceptionPeople(smach.State):
             return "found_all_objects"
         return "succeeded"
 
+class PerceptionSemanticCamera(smach.State):
+    """
+    Perceive the environment in the MORSE simulation using the semantic camera.
+
+    """
+
+    def __init__(self):
+        smach.State.__init__(self,
+                             outcomes=['succeeded', 'aborted', 'preempted', 'found_all_objects'],
+                             input_keys=['found_objects','objects'],
+                             output_keys=['found_objects'])
+        self.found_objs = dict()
+
+
+    def camera_cb(self, data):
+        obj_list = json.loads(data.data)
+        if len(obj_list) == 0:
+            rospy.loginfo("Nothing perceived")
+        for obj_desc in obj_list:
+            rospy.loginfo("Perceived: %s" % obj_desc.get('name'))
+        return obj_list
+
+
+    def execute(self, userdata):
+        rospy.loginfo("Perceiving...")
+
+        # init self.found_objs
+        for obj in userdata.objects:
+            if obj not in self.found_objs:
+                self.found_objs[obj] = False
+
+        try:
+            rospy.loginfo("Wait for /semcam")
+            msg = rospy.wait_for_message("/semcam", String, timeout=10.0)
+            rospy.loginfo("Received msg from /semcam")
+            objects =  self.camera_cb(msg)
+        
+            # set found objects to true
+            rospy.loginfo("*************")
+            
+            for obj in objects:
+                self.found_objs[obj] = True
+        
+            rospy.loginfo("*************")
+
+        except rospy.ROSException, e:
+            rospy.logwarn("Failed to get /semcam")
+
+
+        found_all_objects = True
+        for obj in self.found_objs:
+            if self.found_objs[obj]:
+                if obj not in userdata.found_objects:
+                    userdata.found_objects.append(obj)
+            else:
+                found_all_objects = False
+
+        if found_all_objects:
+            return 'found_all_objects'
+        return 'succeeded' # perception succeeded, but not all objects has been found yet
+
+
+
 
 class PerceptionNill(smach.State):
     """
